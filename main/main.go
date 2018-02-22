@@ -8,25 +8,31 @@ import (
 
 const defaultREconstant  = `(\d+)\.(.+)`
 
-func FindVersion123(version , expression string) (r []string, err error) {
+func parceFlags(version, expression string)  (version1, expression1 string){
 	f := flag.NewFlagSet("flag", flag.ExitOnError)
 	versio := f.String("version", version, "Some description")
 	re := f.String("re", defaultREconstant, "Some description")
 
 	if expression == "" {
-	f.Parse([]string{defaultREconstant})
+		f.Parse([]string{"-re", defaultREconstant, "version", version})
 	}
 
 	if expression != ""{
-	f.Parse([]string{"-re",expression})
+		f.Parse([]string{"-re",expression, "version", version})
 	}
-	req, err := regexp.Compile(*re)
+	return *versio, *re
+}
+
+func FindVersion123(version , expression string) (r []string, err error) {
+
+
+	req, err := regexp.Compile(expression)
 
 
 	if err != nil {
 		return nil, err
 	}
-	r = req.FindStringSubmatch(*versio)
+	r = req.FindStringSubmatch(version)
 	if len(r) == 0 {
 		return nil, errors.New("invalid version")
 	}
@@ -36,14 +42,17 @@ func FindVersion123(version , expression string) (r []string, err error) {
 }
 
 func main() {
-
-	one, err := FindVersion123("10.20.3.5", "")
+	v,re := parceFlags("10.20.3.5", "")
+	one, err := FindVersion123(v, re)
 	fmt.Println(one, "", err)
 	fmt.Println()
-	four, err := FindVersion123("10.20.4.5", `(\d+\.\d+)\.(.+)`)
-	fmt.Println(four, "", err)
-	five, err := FindVersion123("10.20.4.5.54.65.5.5.5.5.5.5.5.5.5", `(\d+\.\d+)\.(.+)`)
-	fmt.Println(five, "", err)
+	v2,re2 := parceFlags("10.20.4.5", `(\d+\.\d+)\.(.+)`)
+	one2, err2 := FindVersion123(v2, re2)
+	fmt.Println(one2, "", err2)
+	fmt.Println()
+	v3,re3 := parceFlags("10.20.4.5.54.65.5.5.5.5.5.5.5.5.5", `(\d+\.\d+)\.(.+)`)
+	one3, err3 := FindVersion123(v3, re3)
+	fmt.Println(one3, "", err3)
 
 }
 
