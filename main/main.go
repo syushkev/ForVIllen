@@ -6,9 +6,10 @@ import (
 	"errors"
 )
 
-func FindVersion123(version ...string) (r []string, err error){
-	if version[1] == "" {
-		version[1] = `(\d+)\.(.+)`
+func FindVersion123(version ...string) (r []string, err error) {
+	if len(version) == 1 {
+		expression := `(\d+)\.(.+)`
+		version = append(version, expression)
 	}
 	req, err := regexp.Compile(version[1])
 	if err != nil {
@@ -19,19 +20,17 @@ func FindVersion123(version ...string) (r []string, err error){
 		return nil, errors.New("invalid version")
 	}
 	r = r[1:]
-	return 	r, err
-
+	return r, err
 
 }
 
 func main() {
 	//var validID = regexp.MustCompile(`(\d+\.\d+)\.(.+)`)
 	//var validID2 = regexp.MustCompile(`(\d+)\.(.+)`)
-	one, err :=FindVersion123("10.20.3.5", "1vjh")
+	one, err := FindVersion123("10.20.3.5")
 	fmt.Println(one, "", err)
 	fmt.Println()
 	four, err := FindVersion123("10.20.3.5", `(\d+\.\d+)\.(.+)`)
 	fmt.Println(four, "", err)
-
 
 }
