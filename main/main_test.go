@@ -13,6 +13,14 @@ func TestFindVersion123(t *testing.T) {
 			t.Fatalf("unexpected error %s", err)
 		}
 	})
+	
+	t.Run("Positive_not_default_RE_2", func(t *testing.T) {
+		testSlice, err := FindVersion123("5.6.9.3.9", `()(\d.+)`)
+		assert.Equal(t, []string{"", "5.6.9.3.9"}, testSlice)
+		if err != nil {
+			t.Fatalf("unexpected error %s", err)
+		}
+	})
 
 	t.Run("Positive_default_RE", func(t *testing.T) {
 		testSlice, err := FindVersion123("5.6.9.3.9", `(\d+)\.(.+)`)
