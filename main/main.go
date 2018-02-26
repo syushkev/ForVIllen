@@ -2,36 +2,97 @@ package main
 
 import (
 	"fmt"
-	"regexp"
-	"errors"
+	"golang.org/x/net/html"
+	"net/http"
+	"os"
+	"strings"
 )
 
-const defaultREconstant  = `(\d+)\.(.+)`
+func getHref(t html.Token) (ok bool, title, href string) {
+	for _, a := range t.Attr {
+		if a.Key == "title" {
+			for _, b := range t.Attr{
+				if b.Key == "href"{
+					title = a.Val
+					href = b.Val
+					ok = true
+				}
+			}
+		}
+	}
 
-func FindVersion123(version , expression string) (r []string, err error) {
+	return
+}
 
-	req, err := regexp.Compile(expression)
+func crawl(url string, ch chan string, chFinished chan bool) {
+	resp, err := http.Get(url)
+
+	defer func() {
+		chFinished <- true
+	}()
 
 	if err != nil {
-		return nil, err
-	}
-	if version == ""{
-		return nil, errors.New("empty field version")
+		fmt.Println("ERROR: Failed to crawl \"" + url + "\"")
+		return
 	}
 
-	r = req.FindStringSubmatch(version)
-	if len(r) == 0 {
-		return nil, errors.New("invalid version")
-	}
-	r = r[1:]
-	return r, err
+	b := resp.Body
+	defer b.Close() 
 
+	z := html.NewTokenizer(b)
+
+	for {
+		tt := z.Next()
+
+		switch {
+		case tt == html.ErrorToken:
+			return
+		case tt == html.StartTagToken:
+			t := z.Token()
+
+			isAnchor := t.Data == "a"
+			if !isAnchor {
+				continue
+			}
+
+			ok, title, url := getHref(t)
+			if !ok {
+				continue
+			}
+
+			hasProto := strings.Index(title, "Download Java software for Linux") == 0
+			if hasProto {
+				ch <- url
+			}
+		}
+	}
 }
 
 func main() {
-	versio := flag.String("version", "", "Some description")
-	re := flag.String("re", defaultREconstant, "Some description")
-	flag.Parse()
-	one, err := FindVersion123(*versio, *re)
-	fmt.Println(one, "", err)
+	foundUrls := make(map[string]bool)
+	seedUrls := os.Args[1:]
+
+	chUrls := make(chan string)
+	chFinished := make(chan bool)
+
+	for _, url := range seedUrls {
+		go crawl(url, chUrls, chFinished)
+	}
+
+	for c := 0; c < len(seedUrls); {
+		select {
+		case url := <-chUrls:
+			foundUrls[url] = true
+		case <-chFinished:
+			c++
+		}
+	}
+
+	fmt.Println("\nFound", len(foundUrls), "unique urls:\n")
+
+	for url, _ := range foundUrls {
+		fmt.Println(" - " + url)
+	}
+
+	close(chUrls)
 }
