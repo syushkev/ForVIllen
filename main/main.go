@@ -5,14 +5,13 @@ import (
 	"golang.org/x/net/html"
 	"net/http"
 	"os"
-	"strings"
 )
 
 func getHref(t html.Token) (ok bool, title, href string) {
 	for _, a := range t.Attr {
 		if a.Key == "title" {
-			for _, b := range t.Attr{
-				if b.Key == "href"{
+			for _, b := range t.Attr {
+				if b.Key == "href" {
 					title = a.Val
 					href = b.Val
 					ok = true
@@ -24,20 +23,17 @@ func getHref(t html.Token) (ok bool, title, href string) {
 	return
 }
 
-func crawl(url string, ch chan string, chFinished chan bool) {
+func crawl(url, version string) map[string]bool {
+	foundUrls := make(map[string]bool)
 	resp, err := http.Get(url)
-
-	defer func() {
-		chFinished <- true
-	}()
 
 	if err != nil {
 		fmt.Println("ERROR: Failed to crawl \"" + url + "\"")
-		return
+		return foundUrls
 	}
 
 	b := resp.Body
-	defer b.Close() 
+	defer b.Close()
 
 	z := html.NewTokenizer(b)
 
@@ -46,7 +42,7 @@ func crawl(url string, ch chan string, chFinished chan bool) {
 
 		switch {
 		case tt == html.ErrorToken:
-			return
+			return foundUrls
 		case tt == html.StartTagToken:
 			t := z.Token()
 
@@ -60,39 +56,25 @@ func crawl(url string, ch chan string, chFinished chan bool) {
 				continue
 			}
 
-			hasProto := strings.Index(title, "Download Java software for Linux") == 0
-			if hasProto {
-				ch <- url
+			if title == version{
+				foundUrls[url] = true
 			}
 		}
 	}
+	return foundUrls
 }
 
 func main() {
-	foundUrls := make(map[string]bool)
-	seedUrls := os.Args[1:]
 
-	chUrls := make(chan string)
-	chFinished := make(chan bool)
+	seedUrls := os.Args[1]
+	version := os.Args[2]
 
-	for _, url := range seedUrls {
-		go crawl(url, chUrls, chFinished)
-	}
+	m := crawl(seedUrls, version)
 
-	for c := 0; c < len(seedUrls); {
-		select {
-		case url := <-chUrls:
-			foundUrls[url] = true
-		case <-chFinished:
-			c++
-		}
-	}
+	fmt.Println("\nFound", len(m), "unique urls:\n")
 
-	fmt.Println("\nFound", len(foundUrls), "unique urls:\n")
-
-	for url, _ := range foundUrls {
+	for url, _ := range m {
 		fmt.Println(" - " + url)
 	}
-
-	close(chUrls)
 }
+
